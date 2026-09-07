@@ -47,7 +47,7 @@ migrate-down: ## Roll back the most recent migration
 
 .PHONY: sqlc
 sqlc: ## Regenerate type-safe query code from internal/db/queries
-	cd $(BACKEND) && go tool sqlc generate
+	cd $(BACKEND) && go -C tools tool sqlc generate --file ../sqlc.yaml
 
 .PHONY: test
 test: ## Run backend unit tests and frontend tests
