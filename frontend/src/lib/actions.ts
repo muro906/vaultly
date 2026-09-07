@@ -46,6 +46,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   try {
     await apiFetch("/api/v1/auth/register", {
       method: "POST",
+      forwardCookies: true,
       body: {
         email: requiredString(formData, "email"),
         password: requiredString(formData, "password"),
@@ -64,6 +65,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   try {
     await apiFetch("/api/v1/auth/login", {
       method: "POST",
+      forwardCookies: true,
       body: {
         email: requiredString(formData, "email"),
         password: requiredString(formData, "password"),
@@ -77,7 +79,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
 
 export async function logoutAction(): Promise<void> {
   try {
-    await apiFetch("/api/v1/auth/logout", { method: "POST" });
+    await apiFetch("/api/v1/auth/logout", { method: "POST", forwardCookies: true });
   } catch {
     // Signing out must always succeed locally, even if the API is unreachable.
   }

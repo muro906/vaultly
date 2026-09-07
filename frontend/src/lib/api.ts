@@ -51,6 +51,55 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Session cookies the Go API issues, re-pathed for this origin.
+ *
+ * The API scopes its refresh cookie to its own /api/v1/auth path. That path
+ * does not exist on the Next.js origin, so a cookie copied across verbatim
+ * would never be sent back and the session would silently fail to refresh.
+ * Everything is therefore re-pathed to "/" here.
+ */
+export function forwardSessionCookies(setCookies: string[]): void {
+  const store = cookies();
+
+  for (const raw of setCookies) {
+    const [pair, ...attributes] = raw.split(";");
+    if (!pair) continue;
+
+    const separator = pair.indexOf("=");
+    if (separator === -1) continue;
+
+    const name = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+    if (name !== ACCESS_COOKIE && name !== REFRESH_COOKIE) continue;
+
+    let maxAge: number | undefined;
+    let secure = false;
+    for (const attribute of attributes) {
+      const [key, attrValue] = attribute.split("=");
+      const normalised = key?.trim().toLowerCase();
+      if (normalised === "max-age") maxAge = Number(attrValue);
+      if (normalised === "secure") secure = true;
+    }
+
+    // An expiring cookie (Max-Age 0 or negative) is a deletion.
+    if (maxAge !== undefined && maxAge <= 0) {
+      store.delete(name);
+      continue;
+    }
+
+    store.set({
+      name,
+      value,
+      httpOnly: true,
+      sameSite: "lax",
+      secure,
+      path: "/",
+      maxAge,
+    });
+  }
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
@@ -61,6 +110,15 @@ interface RequestOptions {
    */
   cache?: RequestCache;
   signal?: AbortSignal;
+  /**
+   * Copy the API's Set-Cookie headers onto this origin's response. Only the
+   * endpoints that start or rotate a session need it; without it a sign-in
+   * succeeds against the API and the browser is handed nothing.
+   *
+   * Only valid inside a Server Action or Route Handler, since those are the
+   * only places Next.js permits writing a cookie.
+   */
+  forwardCookies?: boolean;
 }
 
 /**
@@ -91,6 +149,10 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     cache: options.cache ?? "no-store",
     signal: options.signal,
   });
+
+  if (options.forwardCookies) {
+    forwardSessionCookies(response.headers.getSetCookie());
+  }
 
   if (response.status === 204) {
     return undefined as T;
