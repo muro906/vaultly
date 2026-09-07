@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS access_tokens;
+DROP TABLE IF EXISTS secret_versions;
+DROP TABLE IF EXISTS secrets;
+DROP TABLE IF EXISTS environments;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS workspace_members;
+DROP TABLE IF EXISTS workspaces;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS users;

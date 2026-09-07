@@ -1,0 +1,39 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "internal/db/migrations"
+    queries: "internal/db/queries"
+    gen:
+      go:
+        package: "sqlcgen"
+        out: "internal/db/sqlcgen"
+        sql_package: "pgx/v5"
+        emit_json_tags: false
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        # uuid columns map to a real UUID type rather than pgtype's wrapper,
+        # so identifiers stay comparable and printable throughout the codebase.
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              type: "UUID"
+              import: "github.com/google/uuid"
+              pointer: true
+          # citext behaves as text everywhere it is used here.
+          - db_type: "citext"
+            go_type: "string"
+          # Timestamps map to time.Time, with nullable columns becoming
+          # *time.Time, so the service layer never handles pgtype wrappers.
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              type: "Time"
+              import: "time"
+              pointer: true
