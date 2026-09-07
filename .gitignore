@@ -28,3 +28,7 @@ yarn-error.log*
 .idea/
 .vscode/
 *.swp
+
+# Next.js build output
+/frontend/.next/
+/frontend/out/

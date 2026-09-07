@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface text-slate-200 antialiased;
+  }
+
+  /* A visible focus ring on every interactive element: this app is used with
+     a keyboard as much as a mouse, and the default ring disappears against
+     the dark background. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent-soft ring-offset-2 ring-offset-surface;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-surface-border bg-surface-raised;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium
+           transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-soft;
+  }
+
+  .btn-secondary {
+    @apply btn border border-surface-border bg-surface-raised text-slate-200 hover:border-slate-500;
+  }
+
+  .btn-danger {
+    @apply btn border border-red-900/60 bg-red-950/40 text-red-300 hover:bg-red-950/70;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-surface-border bg-surface px-3 py-2 text-sm
+           text-slate-100 placeholder:text-slate-500;
+  }
+
+  .label {
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}

@@ -128,6 +128,7 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 
 		secrets := user.Group("/secrets")
 		{
+			secrets.GET("/:id", secretHandler.Get)
 			secrets.PUT("/:id", secretHandler.Update)
 			secrets.PATCH("/:id", secretHandler.UpdateDescription)
 			secrets.DELETE("/:id", secretHandler.Delete)

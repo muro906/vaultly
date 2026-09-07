@@ -107,6 +107,15 @@ func (s *SecretService) Reveal(ctx context.Context, userID, secretID uuid.UUID, 
 	return secret, nil
 }
 
+// Get returns a secret's metadata without its value. Viewers may call it,
+// since it reveals nothing that the environment listing does not already show.
+func (s *SecretService) Get(ctx context.Context, userID, secretID uuid.UUID) (*domain.Secret, error) {
+	if _, err := s.authz.RequireSecretRole(ctx, userID, secretID, domain.RoleViewer); err != nil {
+		return nil, err
+	}
+	return s.getSecret(ctx, secretID)
+}
+
 // CreateSecretInput is the payload for creating a secret.
 type CreateSecretInput struct {
 	EnvironmentID uuid.UUID

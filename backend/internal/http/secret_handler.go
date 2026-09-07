@@ -68,6 +68,23 @@ func (h *SecretHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"secret": secret})
 }
 
+// Get returns a secret's metadata. It exists so a client can resolve a
+// secret's project and environment without revealing the value, which would
+// otherwise be recorded as a read it never intended.
+func (h *SecretHandler) Get(c *gin.Context) {
+	secretID, ok := uuidParam(c, "id")
+	if !ok {
+		return
+	}
+
+	secret, err := h.secrets.Get(c.Request.Context(), UserID(c), secretID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"secret": secret})
+}
+
 // Reveal returns a secret's current value. This is the endpoint the masked
 // display calls when a user clicks to reveal, and every call is audited.
 func (h *SecretHandler) Reveal(c *gin.Context) {
