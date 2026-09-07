@@ -404,6 +404,10 @@ someone is paging.
   affect the whole 14.x line with no fix available within it. They concern the
   image optimizer, i18n routing and rewrites — none of which this app uses.
   Moving to Next 15+ would clear them.
+- The Go module path is `vaultly/backend` rather than a domain-based one, so
+  the backend is not `go get`-able as a library. It builds, tests and runs
+  normally; only importing it from another module would need a `replace`
+  directive.
 - Rate limiting is per process (see the threat model).
 - No email delivery, so members must already have an account before being added.
 
