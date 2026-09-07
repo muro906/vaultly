@@ -59,6 +59,21 @@ func (q *Queries) BumpSecretVersionUnchecked(ctx context.Context, arg BumpSecret
 	return current_version, err
 }
 
+const countSecretVersions = `-- name: CountSecretVersions :one
+
+SELECT count(*) FROM secret_versions
+`
+
+// ---------------------------------------------------------------------------
+// Master key rotation
+// ---------------------------------------------------------------------------
+func (q *Queries) CountSecretVersions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countSecretVersions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSecret = `-- name: CreateSecret :one
 INSERT INTO secrets (project_id, environment_id, key, description, current_version, updated_by)
 VALUES ($1, $2, $3, $4, 0, $5::uuid)
@@ -395,6 +410,50 @@ func (q *Queries) ListSecretVersions(ctx context.Context, secretID uuid.UUID) ([
 	return items, nil
 }
 
+const listSecretVersionsForRotation = `-- name: ListSecretVersionsForRotation :many
+SELECT id, wrapped_dek
+FROM secret_versions
+WHERE id > $1
+ORDER BY id
+LIMIT $2
+`
+
+type ListSecretVersionsForRotationParams struct {
+	ID    uuid.UUID
+	Limit int32
+}
+
+type ListSecretVersionsForRotationRow struct {
+	ID         uuid.UUID
+	WrappedDek []byte
+}
+
+// Walks every stored version in id order for rewrapping. Keyset pagination is
+// used rather than OFFSET so a rotation over a large table stays linear, and
+// so it can be resumed from the last id it reported.
+//
+// Only the wrapped key is selected: rotation never touches the ciphertext, so
+// there is no reason to read it into the process.
+func (q *Queries) ListSecretVersionsForRotation(ctx context.Context, arg ListSecretVersionsForRotationParams) ([]ListSecretVersionsForRotationRow, error) {
+	rows, err := q.db.Query(ctx, listSecretVersionsForRotation, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSecretVersionsForRotationRow{}
+	for rows.Next() {
+		var i ListSecretVersionsForRotationRow
+		if err := rows.Scan(&i.ID, &i.WrappedDek); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSecrets = `-- name: ListSecrets :many
 SELECT id, project_id, environment_id, key, description, current_version,
        created_at, updated_at, updated_by
@@ -495,5 +554,21 @@ type UpdateSecretDescriptionParams struct {
 
 func (q *Queries) UpdateSecretDescription(ctx context.Context, arg UpdateSecretDescriptionParams) error {
 	_, err := q.db.Exec(ctx, updateSecretDescription, arg.ID, arg.Description)
+	return err
+}
+
+const updateSecretVersionWrappedDEK = `-- name: UpdateSecretVersionWrappedDEK :exec
+UPDATE secret_versions
+SET wrapped_dek = $2
+WHERE id = $1
+`
+
+type UpdateSecretVersionWrappedDEKParams struct {
+	ID         uuid.UUID
+	WrappedDek []byte
+}
+
+func (q *Queries) UpdateSecretVersionWrappedDEK(ctx context.Context, arg UpdateSecretVersionWrappedDEKParams) error {
+	_, err := q.db.Exec(ctx, updateSecretVersionWrappedDEK, arg.ID, arg.WrappedDek)
 	return err
 }

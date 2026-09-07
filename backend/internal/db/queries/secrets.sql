@@ -106,3 +106,28 @@ FROM secrets s
 JOIN secret_versions v ON v.secret_id = s.id
 WHERE s.environment_id = $1 AND s.deleted_at IS NULL
 ORDER BY s.id, v.version DESC;
+
+-- ---------------------------------------------------------------------------
+-- Master key rotation
+-- ---------------------------------------------------------------------------
+
+-- name: CountSecretVersions :one
+SELECT count(*) FROM secret_versions;
+
+-- Walks every stored version in id order for rewrapping. Keyset pagination is
+-- used rather than OFFSET so a rotation over a large table stays linear, and
+-- so it can be resumed from the last id it reported.
+--
+-- Only the wrapped key is selected: rotation never touches the ciphertext, so
+-- there is no reason to read it into the process.
+-- name: ListSecretVersionsForRotation :many
+SELECT id, wrapped_dek
+FROM secret_versions
+WHERE id > $1
+ORDER BY id
+LIMIT $2;
+
+-- name: UpdateSecretVersionWrappedDEK :exec
+UPDATE secret_versions
+SET wrapped_dek = $2
+WHERE id = $1;

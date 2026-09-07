@@ -287,6 +287,38 @@ A GitHub Actions step:
 
 ---
 
+## Rotating the master key
+
+Envelope encryption makes this cheap: only the wrapped data keys are rewritten,
+never the ciphertext.
+
+```bash
+# 1. Generate the new key and check the rotation would succeed.
+NEW_KEY=$(openssl rand -base64 32)
+
+DATABASE_URL=postgres://…                \
+VAULTLY_MASTER_KEY=$CURRENT_KEY          \
+VAULTLY_NEW_MASTER_KEY=$NEW_KEY          \
+  make rotate-key-check
+
+# 2. Rotate for real.
+DATABASE_URL=postgres://…                \
+VAULTLY_MASTER_KEY=$CURRENT_KEY          \
+VAULTLY_NEW_MASTER_KEY=$NEW_KEY          \
+  make rotate-key
+
+# 3. Set VAULTLY_MASTER_KEY to the new key and restart the API.
+```
+
+Between steps 2 and 3 the running API holds the retired key and **cannot
+decrypt anything**, so plan the restart as part of the rotation.
+
+The command commits one batch per transaction and is idempotent: a row already
+wrapped under the new key is detected and skipped, so an interrupted run is
+resumed simply by running the same command again.
+
+---
+
 ## Roles
 
 | | viewer | member | admin | owner |
@@ -373,8 +405,6 @@ someone is paging.
   image optimizer, i18n routing and rewrites — none of which this app uses.
   Moving to Next 15+ would clear them.
 - Rate limiting is per process (see the threat model).
-- Master key rotation is implemented in the crypto layer and tested, but there
-  is no CLI wired up to walk the table yet.
 - No email delivery, so members must already have an account before being added.
 
 ---

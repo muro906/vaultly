@@ -18,6 +18,10 @@ type Querier interface {
 	BumpSecretVersion(ctx context.Context, arg BumpSecretVersionParams) (int32, error)
 	// Unconditional bump, for writes that do not carry an expected version.
 	BumpSecretVersionUnchecked(ctx context.Context, arg BumpSecretVersionUncheckedParams) (int32, error)
+	// ---------------------------------------------------------------------------
+	// Master key rotation
+	// ---------------------------------------------------------------------------
+	CountSecretVersions(ctx context.Context) (int64, error)
 	CountWorkspaceOwners(ctx context.Context, workspaceID uuid.UUID) (int64, error)
 	// ip_allowlist and scopes are cast to text[] on the way in and out so the Go
 	// layer works with plain strings and owns the parsing into netip.Prefix. That
@@ -88,6 +92,13 @@ type Querier interface {
 	// History for the UI: metadata plus the author's email, without ciphertext,
 	// since the history list never reveals values.
 	ListSecretVersions(ctx context.Context, secretID uuid.UUID) ([]ListSecretVersionsRow, error)
+	// Walks every stored version in id order for rewrapping. Keyset pagination is
+	// used rather than OFFSET so a rotation over a large table stays linear, and
+	// so it can be resumed from the last id it reported.
+	//
+	// Only the wrapped key is selected: rotation never touches the ciphertext, so
+	// there is no reason to read it into the process.
+	ListSecretVersionsForRotation(ctx context.Context, arg ListSecretVersionsForRotationParams) ([]ListSecretVersionsForRotationRow, error)
 	// Metadata only. Values are never included in a listing: revealing one is a
 	// separate, individually audited request.
 	ListSecrets(ctx context.Context, environmentID uuid.UUID) ([]ListSecretsRow, error)
@@ -111,6 +122,7 @@ type Querier interface {
 	TouchAccessToken(ctx context.Context, id uuid.UUID) error
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (UpdateProjectRow, error)
 	UpdateSecretDescription(ctx context.Context, arg UpdateSecretDescriptionParams) error
+	UpdateSecretVersionWrappedDEK(ctx context.Context, arg UpdateSecretVersionWrappedDEKParams) error
 	UpdateWorkspaceMemberRole(ctx context.Context, arg UpdateWorkspaceMemberRoleParams) error
 	WorkspaceSlugExists(ctx context.Context, slug string) (bool, error)
 }

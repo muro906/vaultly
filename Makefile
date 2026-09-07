@@ -45,6 +45,14 @@ migrate: ## Apply all pending database migrations
 migrate-down: ## Roll back the most recent migration
 	cd $(BACKEND) && go run ./cmd/migrate down 1
 
+.PHONY: rotate-key
+rotate-key: ## Rewrap every data key under a new master key (set VAULTLY_NEW_MASTER_KEY)
+	cd $(BACKEND) && go run ./cmd/rotate-key
+
+.PHONY: rotate-key-check
+rotate-key-check: ## Verify a rotation would succeed, changing nothing
+	cd $(BACKEND) && go run ./cmd/rotate-key -dry-run
+
 .PHONY: sqlc
 sqlc: ## Regenerate type-safe query code from internal/db/queries
 	cd $(BACKEND) && go -C tools tool sqlc generate --file ../sqlc.yaml
