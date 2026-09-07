@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vaultly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vaultly}
+      POSTGRES_DB: ${POSTGRES_DB:-vaultly}
+    ports:
+      - "5432:5432"
+    volumes:
+      - vaultly-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vaultly} -d ${POSTGRES_DB:-vaultly}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-vaultly}:${POSTGRES_PASSWORD:-vaultly}@postgres:5432/${POSTGRES_DB:-vaultly}?sslmode=disable
+      VAULTLY_MASTER_KEY: ${VAULTLY_MASTER_KEY:?set VAULTLY_MASTER_KEY in .env - generate with 'make keys'}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env - generate with 'make keys'}
+      PORT: "8080"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/app/api", "-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: ./frontend
+    environment:
+      API_BASE_URL: http://api:8080
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  vaultly-data:
